@@ -15,6 +15,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 class CustomManager(
@@ -44,9 +45,10 @@ class CustomManager(
 
             override fun onEvent(event: Int, path: String?) {
                 when (event) {
-                    ACCESS, MODIFY, MOVED_FROM, MOVED_TO, DELETE, DELETE_SELF, MOVE_SELF -> {}
+                    ACCESS, MODIFY, CLOSE_NOWRITE, OPEN, MOVED_FROM, MOVED_TO, DELETE, DELETE_SELF,
+                    MOVE_SELF -> {}
                     else -> {
-                        // ATTRIB, CLOSE_WRITE, CLOSE_NOWRITE, OPEN, CREATE etc.
+                        // ATTRIB, CLOSE_WRITE, CREATE etc.
                         println("onEvent ${getEventName(event)} $path")
                         UploadWorker.launch(applicationContext)
                     }
@@ -75,24 +77,43 @@ class CustomManager(
                     }
                 }
             }
-            val minutes = prefs.getString("custom_share_interval", null)
-                ?.trim()
-                ?.toLongOrNull()
-                ?: 60L
             timerJob?.cancel()
-            timerJob = launch {
-                while (true) {
-                    println("timer manual share delay(min)=$minutes")
-                    manualShare()
-                    delay(TimeUnit.MINUTES.toMillis(minutes))
-                }
-            }
+            startTimer()
         } else {
             println("setupWork stop")
             fileObserver?.stopWatching()
             networkJob?.cancel()
             UploadWorker.cancel(applicationContext)
             timerJob?.cancel()
+        }
+    }
+
+    private fun startTimer() {
+        val minutes = prefs.getString("custom_share_interval", null)
+            ?.trim()
+            ?.toLongOrNull()
+            ?: 60L
+        val millis = TimeUnit.MINUTES.toMillis(minutes)
+        val lastTimer = prefs.getLong("custom_last_timer", 0L)
+        val now = System.currentTimeMillis()
+        val diff = now - lastTimer
+        if (diff < millis) {
+            println("timer manual share diff=${Duration.ofMillis(diff)} delay=${Duration.ofMillis(millis - diff)}")
+        } else {
+            println("timer manual share")
+        }
+        timerJob = launch {
+            while (true) {
+                if (diff < millis) {
+                    delay(millis - diff)
+                }
+                println("iteration manual share")
+                manualShare()
+                prefs.edit()
+                    .putLong("custom_last_timer", System.currentTimeMillis())
+                    .apply()
+                delay(millis)
+            }
         }
     }
 
