@@ -33,6 +33,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
+import androidovshchik.gpstest.CustomManager
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.PRIORITY_LOW
@@ -119,12 +120,21 @@ class ForegroundOnlyLocationService : LifecycleService() {
     private var gnssFlow: Job? = null
     private var sensorFlow: Job? = null
 
+    private val customManager by lazy {
+        CustomManager(applicationContext) {
+            stopLogging()
+            initLogging()
+        }
+    }
+
     lateinit var csvFileLogger: CsvFileLogger
     lateinit var jsonFileLogger: JsonFileLogger
 
     // Preference listener that will init the loggers if the user changes Settings while Service is running
     private val loggingSettingListener: SharedPreferences.OnSharedPreferenceChangeListener =
-        PreferenceUtil.newFileLoggingListener(app, { initLogging() }, prefs)
+        PreferenceUtil.newFileLoggingListener(app, { initLogging() }, prefs) {
+            customManager.onPrefChange(it)
+        }
     private var deletedFiles = false
     private var injectedAssistData = false
 
@@ -138,6 +148,8 @@ class ForegroundOnlyLocationService : LifecycleService() {
 
         // Observe logging setting changes
         Application.prefs.registerOnSharedPreferenceChangeListener(loggingSettingListener)
+
+        lifecycle.addObserver(customManager)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -220,6 +232,7 @@ class ForegroundOnlyLocationService : LifecycleService() {
         Log.d(TAG, "onDestroy()")
         stopLogging()
         super.onDestroy()
+        lifecycle.removeObserver(customManager)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -606,7 +619,7 @@ class ForegroundOnlyLocationService : LifecycleService() {
         if (!jsonFileLogger.isStarted && isJsonLoggingEnabled(app, prefs)) {
             jsonFileLogger.startLog(null, date)
         }
-        maybeDeleteFiles()
+        //maybeDeleteFiles()
     }
 
     private fun maybeInjectAssistData() {

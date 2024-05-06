@@ -171,6 +171,27 @@
                     android:defaultValue="false" />
             </PreferenceCategory>
         </PreferenceScreen>
+        <CheckBoxPreference
+            android:key="custom_enable_upload"
+            android:title="Отправка FTP"
+            android:defaultValue="false" />
+        <EditTextPreference
+            android:key="custom_share_interval"
+            android:title="Интервал share"
+            android:summary="в минутах (по умолчанию 60)"
+            android:defaultValue="60" />
+        <EditTextPreference
+            android:key="custom_ftp_url"
+            android:title="Адрес сервера FTP" />
+        <EditTextPreference
+            android:key="custom_ftp_login"
+            android:title="Логин FTP" />
+        <EditTextPreference
+            android:key="custom_ftp_password"
+            android:title="Пароль FTP" />
+        <EditTextPreference
+            android:key="custom_ftp_path"
+            android:title="Путь папки FTP" />
     </PreferenceCategory>
 
     <PreferenceCategory

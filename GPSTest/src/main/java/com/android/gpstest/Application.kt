@@ -19,6 +19,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.preference.PreferenceManager
+import androidovshchik.gpstest.initCustomModule
 import androidx.multidex.MultiDexApplication
 import com.android.gpstest.lang.LocaleManager
 import dagger.hilt.android.HiltAndroidApp
@@ -40,6 +41,8 @@ class Application : MultiDexApplication() {
         if (prefs.getBoolean(getString(R.string.pref_key_dark_theme), false)) {
             setTheme(R.style.AppTheme_Dark)
         }
+
+        initCustomModule(applicationContext)
     }
 
     override fun attachBaseContext(base: Context) {

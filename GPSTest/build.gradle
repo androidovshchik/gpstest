@@ -215,6 +215,14 @@ dependencies {
     // UI Tests
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4:1.0.5'
 
+    def room_version = "2.4.3"
+    def work_version = "2.8.0-alpha01"
+    implementation 'androidx.preference:preference:1.2.0'
+    implementation "androidx.room:room-runtime:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
+    implementation "androidx.work:work-runtime-ktx:$work_version"
+    implementation 'commons-net:commons-net:3.10.0'
+
     //
     // Unit tests
     //

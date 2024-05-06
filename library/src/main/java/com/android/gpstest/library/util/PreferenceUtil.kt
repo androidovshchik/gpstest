@@ -231,8 +231,14 @@ object PreferenceUtil {
      * Returns a reference to the OnSharedPreferenceChangeListener so it can be held by the calling class, as
      * anonymous preference listeners tend to get GC'd by Android.
      */
-    fun newFileLoggingListener(context: Context, initLogging: () -> Unit, prefs: SharedPreferences): SharedPreferences.OnSharedPreferenceChangeListener {
+    fun newFileLoggingListener(
+        context: Context,
+        initLogging: () -> Unit,
+        prefs: SharedPreferences,
+        onPrefChange: (key: String) -> Unit,
+    ): SharedPreferences.OnSharedPreferenceChangeListener {
         return SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            onPrefChange(key)
             if (key == context.getString(R.string.pref_key_file_location_output) ||
                 key == context.getString(R.string.pref_key_file_measurement_output) ||
                 key == context.getString(R.string.pref_key_file_nmea_output) ||

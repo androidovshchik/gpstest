@@ -29,7 +29,7 @@ import java.util.Date;
 public abstract class BaseFileLogger implements FileLogger {
 
     protected final String TAG = this.getClass().getName();
-    protected static final String FILE_PREFIX = "gnss_log";
+    public static final String FILE_PREFIX = "gnss_log";
 
     protected static final String DIRECTORY = "Download/GPSTest";
 
