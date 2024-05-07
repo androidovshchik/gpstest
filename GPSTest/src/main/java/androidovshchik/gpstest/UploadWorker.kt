@@ -76,12 +76,9 @@ class UploadWorker(
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            withContext(Dispatchers.Main) {
-                Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
-                    .show()
-            }
+            showError(e)
         }
+        println("upload done")
         return Result.success()
     }
 
@@ -104,11 +101,7 @@ class UploadWorker(
                 file.delete()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            withContext(Dispatchers.Main) {
-                Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
-                    .show()
-            }
+            showError(e)
         } finally {
             ftpClient?.logout()
             ftpClient?.disconnect()
@@ -145,11 +138,7 @@ class UploadWorker(
                 file.delete()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
-            withContext(Dispatchers.Main) {
-                Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
-                    .show()
-            }
+            showError(e)
         } finally {
             channel?.exit()
             session?.disconnect()
@@ -157,6 +146,14 @@ class UploadWorker(
         if (iterator.hasNext()) {
             delay(1500L)
             uploadFilesSFTP(iterator)
+        }
+    }
+
+    private suspend fun showError(e: Exception) {
+        println(e.stackTraceToString())
+        withContext(Dispatchers.Main) {
+            Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
+                .show()
         }
     }
 

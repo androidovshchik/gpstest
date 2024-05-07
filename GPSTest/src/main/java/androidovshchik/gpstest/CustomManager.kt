@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Duration
@@ -70,7 +71,7 @@ class CustomManager(
             fileObserver?.startWatching()
             networkJob?.cancel()
             networkJob = launch {
-                networkStatus.getNetworkStatus().collect {
+                networkStatus.getNetworkStatus().drop(1).collect {
                     println("getNetworkStatus $it")
                     if (it == InternetConnectionState.InternetConnectionAvailableState) {
                         UploadWorker.launch(applicationContext)
