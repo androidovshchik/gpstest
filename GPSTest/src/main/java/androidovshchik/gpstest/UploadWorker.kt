@@ -15,20 +15,27 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.android.gpstest.R
 import com.android.gpstest.io.BaseFileLogger
+import com.jcraft.jsch.ChannelSftp
+import com.jcraft.jsch.JSch
+import com.jcraft.jsch.Session
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.apache.commons.net.ftp.FTPClient
+import org.apache.commons.net.ftp.FTPSClient
 import java.io.File
+import java.util.Properties
 
 class UploadWorker(
     appContext: Context,
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
-    private val ftpClient = FTPClient()
-
     private val prefs = PreferenceManager.getDefaultSharedPreferences(appContext)
+
+    private var ftpClient: FTPClient? = null
+
+    private var jsch: JSch? = null
 
     override suspend fun doWork(): Result {
         println("doWork")
@@ -44,15 +51,6 @@ class UploadWorker(
             .dropLast(1)
         println("txtFiles size=${txtFiles.size}")
         try {
-            uploadFiles(jsonFiles.iterator())
-            uploadFiles(txtFiles.iterator())
-        } catch (ignored: Exception) {
-        }
-        return Result.success()
-    }
-
-    private suspend fun uploadFiles(iterator: Iterator<File>) {
-        try {
             check(!prefs.getString("custom_ftp_url", null).isNullOrBlank()) {
                 "Не задан адрес сервера FTP"
             }
@@ -65,21 +63,43 @@ class UploadWorker(
             check(!prefs.getString("custom_ftp_path", null).isNullOrBlank()) {
                 "Не задан путь папки FTP"
             }
+            when (val type = prefs.getString("custom_ftp_type", "FTP")) {
+                "FTP", "FTPS" -> {
+                    ftpClient = if (type == "FTP") FTPClient() else FTPSClient()
+                    uploadFilesFTP(jsonFiles.iterator())
+                    uploadFilesFTP(txtFiles.iterator())
+                }
+                else -> {
+                    jsch = JSch()
+                    uploadFilesSFTP(jsonFiles.iterator())
+                    uploadFilesSFTP(txtFiles.iterator())
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
+                    .show()
+            }
+        }
+        return Result.success()
+    }
 
-            ftpClient.connect(prefs.getString("custom_ftp_url", null))
-            ftpClient.login(
+    private suspend fun uploadFilesFTP(iterator: Iterator<File>) {
+        try {
+            ftpClient?.connect(prefs.getString("custom_ftp_url", null))
+            ftpClient?.login(
                 prefs.getString("custom_ftp_login", null),
                 prefs.getString("custom_ftp_password", null)
             )
-
-            ftpClient.enterLocalPassiveMode()
-            ftpClient.changeWorkingDirectory(prefs.getString("custom_ftp_path", null))
+            ftpClient?.enterLocalPassiveMode()
+            ftpClient?.changeWorkingDirectory(prefs.getString("custom_ftp_path", null))
 
             while (iterator.hasNext()) {
                 val file = iterator.next()
-                println("uploading ${file.path}")
+                println("uploading ${ftpClient is FTPSClient} ${file.path}")
                 file.inputStream().use { inputStream ->
-                    ftpClient.storeFile(file.name, inputStream)
+                    ftpClient?.storeFile(file.name, inputStream)
                 }
                 file.delete()
             }
@@ -89,16 +109,54 @@ class UploadWorker(
                 Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
                     .show()
             }
-            if (e is IllegalStateException) {
-                throw e
-            }
         } finally {
-            ftpClient.logout()
-            ftpClient.disconnect()
+            ftpClient?.logout()
+            ftpClient?.disconnect()
         }
         if (iterator.hasNext()) {
             delay(1500L)
-            uploadFiles(iterator)
+            uploadFilesFTP(iterator)
+        }
+    }
+
+    private suspend fun uploadFilesSFTP(iterator: Iterator<File>) {
+        var session: Session? = null
+        var channel: ChannelSftp? = null
+        try {
+            session = jsch?.getSession(
+                prefs.getString("custom_ftp_login", null),
+                prefs.getString("custom_ftp_url", null)
+            )
+            session?.setPassword(prefs.getString("custom_ftp_password", null))
+            session?.setConfig(Properties().apply {
+                put("StrictHostKeyChecking", "no")
+            })
+            session?.connect()
+            channel = session?.openChannel("sftp") as? ChannelSftp
+            channel?.connect()
+            channel?.cd(prefs.getString("custom_ftp_path", null))
+
+            while (iterator.hasNext()) {
+                val file = iterator.next()
+                println("uploading sftp ${file.path}")
+                file.inputStream().use { inputStream ->
+                    channel?.put(inputStream, file.name)
+                }
+                file.delete()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(applicationContext, e.message, Toast.LENGTH_LONG)
+                    .show()
+            }
+        } finally {
+            channel?.exit()
+            session?.disconnect()
+        }
+        if (iterator.hasNext()) {
+            delay(1500L)
+            uploadFilesSFTP(iterator)
         }
     }
 

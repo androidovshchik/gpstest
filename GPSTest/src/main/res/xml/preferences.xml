@@ -180,6 +180,13 @@
             android:title="Интервал share"
             android:summary="в минутах (по умолчанию 60)"
             android:defaultValue="60" />
+        <ListPreference
+            android:key="custom_ftp_type"
+            android:title="Тип подключения FTP"
+            android:dialogTitle="Тип подключения FTP"
+            android:defaultValue="FTP"
+            android:entries="@array/ftp_entries"
+            android:entryValues="@array/ftp_entries" />
         <EditTextPreference
             android:key="custom_ftp_url"
             android:title="Адрес сервера FTP" />
